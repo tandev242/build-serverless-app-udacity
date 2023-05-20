@@ -11,10 +11,12 @@ import {
   Icon,
   Input,
   Image,
-  Loader
+  Loader,
+  Search,
+  SearchProps
 } from 'semantic-ui-react'
 
-import { createTodo, deleteTodo, getTodos, patchTodo } from '../api/todos-api'
+import { createTodo, deleteTodo, getTodos, patchTodo, searchTodos } from '../api/todos-api'
 import Auth from '../auth/Auth'
 import { Todo } from '../types/Todo'
 
@@ -30,6 +32,10 @@ interface TodosState {
 }
 
 export class Todos extends React.PureComponent<TodosProps, TodosState> {
+  constructor(props: TodosProps | Readonly<TodosProps>) {
+    super(props)
+    this.handleSearchChange = this.handleSearchChange.bind(this)
+  }
   state: TodosState = {
     todos: [],
     newTodoName: '',
@@ -46,6 +52,10 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
 
   onTodoCreate = async (event: React.ChangeEvent<HTMLButtonElement>) => {
     try {
+      if(!this.state.newTodoName) {
+        alert('Please enter a name!')
+        return
+      }
       const dueDate = this.calculateDueDate()
       const newTodo = await createTodo(this.props.auth.getIdToken(), {
         name: this.state.newTodoName,
@@ -101,6 +111,17 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
     }
   }
 
+  async handleSearchChange(event: React.MouseEvent<HTMLElement, MouseEvent>, data: SearchProps) {
+    const text = data.value || ''
+    let todos: Todo[] = []
+    if(data.value) {
+      todos = await searchTodos(this.props.auth.getIdToken(), text)
+    } else {
+      todos = await getTodos(this.props.auth.getIdToken())
+    }
+    this.setState({todos})
+  }
+
   render() {
     return (
       <div>
@@ -131,6 +152,17 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
             onChange={this.handleNameChange}
           />
         </Grid.Column>
+
+        <Grid.Column width={16}>
+          <Divider />
+          <Search
+            open={false}
+            placeholder='Search...'
+            onSearchChange={this.handleSearchChange}
+            results={this.state.todos}
+          />
+        </Grid.Column>
+        
         <Grid.Column width={16}>
           <Divider />
         </Grid.Column>
@@ -209,6 +241,6 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
     const date = new Date()
     date.setDate(date.getDate() + 7)
 
-    return dateFormat(date, 'yyyy-mm-dd') as string
+    return dateFormat(date, 'yyyy-mm-dd hh:mm:ss') as string
   }
 }
